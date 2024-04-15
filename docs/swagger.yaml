@@ -1,0 +1,220 @@
+basePath: /user
+definitions:
+  models.AddRolesDTO:
+    properties:
+      login:
+        type: string
+      roles:
+        type: string
+    required:
+    - login
+    - roles
+    type: object
+  models.GetUserDataDTO:
+    properties:
+      login:
+        type: string
+    required:
+    - login
+    type: object
+  models.LoginDTO:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  models.RegisterDTO:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  models.UnregisterDTO:
+    properties:
+      login:
+        type: string
+    required:
+    - login
+    type: object
+  responses.AddRolesError:
+    properties:
+      error:
+        type: string
+      roles status:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  responses.AddRolesSuccess:
+    properties:
+      login:
+        type: string
+      roles status:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  responses.Error:
+    properties:
+      error:
+        type: string
+    type: object
+  responses.GetUserSuccess:
+    properties:
+      id:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+    type: object
+  responses.LoginSuccess:
+    properties:
+      access_token:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  title: Auth API
+  version: "1.0"
+paths:
+  /addRoles:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login of an account and roles to add
+        in: body
+        name: AddRolesDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddRolesDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.AddRolesSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.AddRolesError'
+      summary: AddRoles user
+      tags:
+      - User
+  /getUserData:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login of an account which data to get
+        in: body
+        name: GetUserDataDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.GetUserDataDTO'
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.GetUserSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: GetUserData user
+      tags:
+      - User
+  /login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Account data
+        in: body
+        name: LoginDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.LoginSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: Login user
+      tags:
+      - User
+  /register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Data of new account
+        in: body
+        name: RegisterDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Done
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: Register new user
+      tags:
+      - User
+  /unregister:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Data of account to delete
+        in: body
+        name: UnregisterDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.UnregisterDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Done
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: Unregister user
+      tags:
+      - User
+swagger: "2.0"
