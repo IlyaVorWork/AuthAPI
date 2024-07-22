@@ -1,11 +1,12 @@
 package repositories
 
 import (
-	"AuthAPI/internal/core/domain/models"
-	"AuthAPI/pkg/customError"
+	"auth/internal/core/domain/models"
+	"auth/pkg/customError"
 	"database/sql"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"sort"
 )
 
 type UsersRepository struct {
@@ -25,6 +26,9 @@ func (repository *UsersRepository) GetUserByLogin(login string) (models.User, er
 	}
 
 	roles, err := repository.GetUserRolesByLogin(login)
+	if err != nil {
+		return models.User{}, err
+	}
 
 	dbData.Roles = roles
 
@@ -97,6 +101,8 @@ func (repository *UsersRepository) GetUserRolesByLogin(login string) ([]string, 
 		oldRoles = append(oldRoles, role.Name)
 	}
 
+	sort.Strings(oldRoles)
+
 	return oldRoles, nil
 }
 
@@ -112,6 +118,7 @@ func (repository *UsersRepository) Register(login string, pass []byte) error {
 
 	_, err := repository.db.Exec("INSERT INTO profile (profile_login, profile_password) VALUES ($1, $2)", login, pass)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 

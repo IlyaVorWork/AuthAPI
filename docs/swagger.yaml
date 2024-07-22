@@ -10,6 +10,36 @@ definitions:
     - login
     - roles
     type: object
+  models.DeleteFileDTO:
+    properties:
+      file-name:
+        type: string
+      login:
+        type: string
+    required:
+    - file-name
+    - login
+    type: object
+  models.DownloadFileDTO:
+    properties:
+      file-name:
+        type: string
+      login:
+        type: string
+      path:
+        type: string
+    required:
+    - file-name
+    - login
+    - path
+    type: object
+  models.GetFileListDTO:
+    properties:
+      login:
+        type: string
+    required:
+    - login
+    type: object
   models.GetUserDataDTO:
     properties:
       login:
@@ -67,6 +97,13 @@ definitions:
       error:
         type: string
     type: object
+  responses.GetFileListSuccess:
+    properties:
+      files list:
+        items:
+          type: string
+        type: array
+    type: object
   responses.GetUserSuccess:
     properties:
       id:
@@ -102,6 +139,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/models.AddRolesDTO'
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -116,6 +158,92 @@ paths:
       summary: AddRoles user
       tags:
       - User
+  /deleteFile:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login of an owner and name of file to delete
+        in: body
+        name: DeleteFileDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteFileDTO'
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: File was successfully deleted
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: DeleteFile user
+      tags:
+      - File
+  /downloadFile:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login of an owner, name of file and path of downloading
+        in: body
+        name: DownloadFileDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.DownloadFileDTO'
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: File was successfully downloaded
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: DownloadFile user
+      tags:
+      - File
+  /getFileList:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login of an owner of files
+        in: body
+        name: GetFileListDTO
+        required: true
+        schema:
+          $ref: '#/definitions/models.GetFileListDTO'
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.GetFileListSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: GetFileList user
+      tags:
+      - File
   /getUserData:
     post:
       consumes:
@@ -186,7 +314,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Done
+          description: New profile was successfully registered
         "400":
           description: Bad Request
           schema:
@@ -205,11 +333,16 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/models.UnregisterDTO'
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Done
+          description: Profile was successfully unregistered
         "400":
           description: Bad Request
           schema:
@@ -217,4 +350,36 @@ paths:
       summary: Unregister user
       tags:
       - User
+  /uploadFile:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Login of a user
+        in: formData
+        name: login
+        required: true
+        type: string
+      - description: Access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: File was successfully uploaded
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.Error'
+      summary: UploadFile user
+      tags:
+      - File
 swagger: "2.0"

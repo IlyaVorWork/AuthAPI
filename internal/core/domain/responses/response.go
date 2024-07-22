@@ -24,3 +24,7 @@ type GetUserSuccess struct {
 	Password string   `json:"password"`
 	Roles    []string `json:"roles"`
 }
+
+type GetFileListSuccess struct {
+	List []string `json:"files list"`
+}

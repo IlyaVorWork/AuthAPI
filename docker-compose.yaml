@@ -1,21 +1,43 @@
 services:
 
   postgres:
-    image: postgres
-    container_name: auth_api_db
+    image: postgres:16.3-alpine3.20
+    container_name: auth
     restart: always
     environment:
-      POSTGRES_DB: ${DB_NAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - ./dockerDB/auth.sql:/docker-entrypoint-initdb.d/auth.sql
+      - ./docker-entrypoint-initdb.d/auth.sql:/docker-entrypoint-initdb.d/auth.sql
     ports:
       - 5432:5432
 
-  app:
-    image: auth_api:latest
-    container_name: auth_api
+  minio:
+    container_name: minio:RELEASE.2024-05-28T17-19-04Z
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --address ":9000" --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      MINIO_STORAGE_USE_HTTPS: False
+
+  nginx:
+    image: nginx:1.24.0-alpine-slim
+    container_name: nginx
     restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - 3000:3000
+
+  app:
+    image: auth:latest
+    container_name: app
+    restart: always
+    environment:
+      MINIO_ENDPOINT: minio:9000
     build:
       context: ./
       dockerfile: ./Dockerfile
@@ -23,3 +45,4 @@ services:
       - 8080:8080
     depends_on:
       - postgres
+      - minio

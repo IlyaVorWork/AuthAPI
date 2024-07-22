@@ -1,11 +1,14 @@
 package core
 
 import (
-	"AuthAPI/internal/core/domain/models"
-	"AuthAPI/pkg/customError"
+	"auth/internal/core/domain/models"
+	"auth/pkg/customError"
+	"context"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/minio/minio-go/v7"
 	"golang.org/x/crypto/bcrypt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -24,12 +27,27 @@ type UsersRepository interface {
 	AddRole(profileId, newRoleId string) error
 }
 
-type UserService struct {
-	repo UsersRepository
+type FileStorage interface {
+	CreateBucket(ctx context.Context, bucketName string) error
+	RemoveBucket(ctx context.Context, bucketName string) error
+	RemoveObjects(ctx context.Context, bucketName string) error
+	UploadFile(ctx context.Context, bucketName, fileName string, file io.Reader, size int64, contentType string) error
+	DownloadFile(ctx context.Context, bucketName, fileName, path string) error
+	DeleteFile(ctx context.Context, bucketName, fileName string) error
+	GetFile(ctx context.Context, bucketName, fileName string) (minio.ObjectInfo, error)
+	GetFileList(ctx context.Context, bucketName string) []string
 }
 
-func NewUserService(repo UsersRepository) *UserService {
-	return &UserService{repo: repo}
+type UserService struct {
+	repo        UsersRepository
+	fileStorage FileStorage
+}
+
+func NewUserService(repo UsersRepository, fileStorage FileStorage) *UserService {
+	return &UserService{
+		repo:        repo,
+		fileStorage: fileStorage,
+	}
 }
 
 func (service *UserService) RegisterUser(login, pass string) error {
@@ -52,22 +70,22 @@ func (service *UserService) RegisterUser(login, pass string) error {
 	return nil
 }
 
-func (service *UserService) LoginUser(login, pass string) (error, string) {
+func (service *UserService) LoginUser(login, pass string) (string, error) {
 
 	dbData, err := service.repo.GetUserByLogin(login)
-	fmt.Println(dbData, err)
 	if err != nil {
-		return customError.UnexistingLoginError, ""
+		return "", customError.UnexistingLoginError
 	}
 
 	err = service.repo.Login(pass, dbData.Password)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 
 	payload := jwt.MapClaims{
-		"login": dbData.Login,
 		"exp":   time.Now().Add(time.Minute * 60).Unix(),
+		"login": dbData.Login,
+		"roles": dbData.Roles,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
@@ -76,10 +94,10 @@ func (service *UserService) LoginUser(login, pass string) (error, string) {
 
 	t, err := token.SignedString([]byte(JWT_SECRET_KEY))
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 
-	return nil, t
+	return t, err
 }
 
 func (service *UserService) UnregisterUser(login string) error {
@@ -97,21 +115,21 @@ func (service *UserService) UnregisterUser(login string) error {
 	return nil
 }
 
-func (service *UserService) AddRoles(login, newRolesString string) (error, map[string]string) {
+func (service *UserService) AddRoles(login, newRolesString string) (map[string]string, error) {
 
 	profileData, err := service.repo.GetUserByLogin(login)
 	if err != nil {
-		return customError.UnexistingLoginError, nil
+		return nil, customError.UnexistingLoginError
 	}
 
 	oldRoles, err := service.repo.GetUserRolesByLogin(login)
 	if err != nil {
-		return customError.UnexistingLoginError, nil
+		return nil, customError.UnexistingLoginError
 	}
 
 	existingRoles, err := service.repo.GetRolesListAsMap()
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	newRoles := strings.Split(newRolesString, " ")
@@ -140,20 +158,134 @@ func (service *UserService) AddRoles(login, newRolesString string) (error, map[s
 
 		err = service.repo.AddRole(profileData.Id, id)
 		if err != nil {
-			return err, newRolesStatus
+			return newRolesStatus, err
 		}
 
 		newRolesStatus[newRoles[i]] = "role was successfully added"
 	}
 
-	return nil, newRolesStatus
+	return newRolesStatus, nil
 }
 
-func (service *UserService) GetUserData(login string) (error, models.User) {
+func (service *UserService) GetUserData(login string) (models.User, error) {
 	profileData, err := service.repo.GetUserByLogin(login)
 	if err != nil {
-		return customError.UnexistingLoginError, models.User{}
+		return models.User{}, customError.UnexistingLoginError
 	}
 
-	return nil, profileData
+	return profileData, nil
+}
+
+func (service *UserService) CreateBucket(ctx context.Context, login string) error {
+
+	profileData, err := service.repo.GetUserByLogin(login)
+	if err != nil {
+		return customError.UnexistingLoginError
+	}
+
+	bucketName := fmt.Sprintf("%s-%s", strings.ToLower(profileData.Login), profileData.Id)
+
+	return service.fileStorage.CreateBucket(ctx, bucketName)
+}
+
+func (service *UserService) RemoveBucket(ctx context.Context, login string) error {
+
+	profileData, err := service.repo.GetUserByLogin(login)
+	if err != nil {
+		return customError.UnexistingLoginError
+	}
+
+	bucketName := fmt.Sprintf("%s-%s", strings.ToLower(profileData.Login), profileData.Id)
+
+	err = service.fileStorage.RemoveObjects(ctx, bucketName)
+	if err != nil {
+		return err
+	}
+
+	err = service.fileStorage.RemoveBucket(ctx, bucketName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (service *UserService) UploadFile(ctx context.Context, login, fileName string, file io.Reader, size int64, contentType string) error {
+
+	profileData, err := service.repo.GetUserByLogin(login)
+	if err != nil {
+		return customError.UnexistingLoginError
+	}
+
+	bucketName := fmt.Sprintf("%s-%s", strings.ToLower(profileData.Login), profileData.Id)
+
+	_, err = service.fileStorage.GetFile(ctx, bucketName, fileName)
+	if err == nil {
+		return customError.ExistingFileError
+	}
+
+	return service.fileStorage.UploadFile(ctx, bucketName, fileName, file, size, contentType)
+}
+
+func (service *UserService) DownloadFile(ctx context.Context, login, fileName, path string) error {
+
+	profileData, err := service.repo.GetUserByLogin(login)
+	if err != nil {
+		return customError.UnexistingLoginError
+	}
+
+	bucketName := fmt.Sprintf("%s-%s", strings.ToLower(profileData.Login), profileData.Id)
+
+	_, err = service.fileStorage.GetFile(ctx, bucketName, fileName)
+	if err != nil {
+		return customError.UnexistingFileError
+	}
+
+	if _, err := os.Stat(fmt.Sprintf("%s/%s", path, fileName)); err == nil {
+		return customError.ExistingFileError
+	}
+
+	err = service.fileStorage.DownloadFile(ctx, bucketName, fileName, path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (service *UserService) DeleteFile(ctx context.Context, login, fileName string) error {
+
+	profileData, err := service.repo.GetUserByLogin(login)
+	if err != nil {
+		return customError.UnexistingLoginError
+	}
+
+	bucketName := fmt.Sprintf("%s-%s", strings.ToLower(profileData.Login), profileData.Id)
+
+	obj, err := service.fileStorage.GetFile(ctx, bucketName, fileName)
+	fmt.Println(obj, err)
+	if err != nil {
+		return customError.UnexistingFileError
+	}
+
+	err = service.fileStorage.DeleteFile(ctx, bucketName, fileName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (service *UserService) GetFileList(ctx context.Context, login string) ([]string, error) {
+
+	profileData, err := service.repo.GetUserByLogin(login)
+	if err != nil {
+		return make([]string, 0), customError.UnexistingLoginError
+	}
+
+	bucketName := fmt.Sprintf("%s-%s", strings.ToLower(profileData.Login), profileData.Id)
+
+	list := service.fileStorage.GetFileList(ctx, bucketName)
+
+	return list, nil
 }

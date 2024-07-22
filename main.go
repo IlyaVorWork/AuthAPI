@@ -1,10 +1,10 @@
 package main
 
 import (
-	docs "AuthAPI/docs"
-	"AuthAPI/internal/core"
-	"AuthAPI/internal/handlers"
-	"AuthAPI/internal/repositories"
+	docs "auth/docs"
+	"auth/internal/core"
+	"auth/internal/handlers"
+	"auth/internal/repositories"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -26,7 +26,8 @@ func main() {
 	r := gin.Default()
 
 	userRepo := repositories.NewUsersRepository(repositories.AccessDataBase())
-	userService := core.NewUserService(userRepo)
+	fileStorage := repositories.NewFileStorage()
+	userService := core.NewUserService(userRepo, fileStorage)
 	userHandler := handlers.NewUserHandler(userService)
 
 	docs.SwaggerInfo.BasePath = "/user"
@@ -37,6 +38,10 @@ func main() {
 		user.DELETE("/unregister", userHandler.Unregister)
 		user.PUT("/addRoles", userHandler.AddRoles)
 		user.POST("/getUserData", userHandler.GetUserData)
+		user.POST("/uploadFile", userHandler.UploadFile)
+		user.POST("/downloadFile", userHandler.DownloadFile)
+		user.DELETE("/deleteFile", userHandler.DeleteFile)
+		user.POST("/getFileList", userHandler.GetFileList)
 	}
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 

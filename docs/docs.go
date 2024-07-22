@@ -36,6 +36,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.AddRolesDTO"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -49,6 +56,138 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/responses.AddRolesError"
+                        }
+                    }
+                }
+            }
+        },
+        "/deleteFile": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "DeleteFile user",
+                "parameters": [
+                    {
+                        "description": "Login of an owner and name of file to delete",
+                        "name": "DeleteFileDTO",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteFileDTO"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File was successfully deleted"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/downloadFile": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "DownloadFile user",
+                "parameters": [
+                    {
+                        "description": "Login of an owner, name of file and path of downloading",
+                        "name": "DownloadFileDTO",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DownloadFileDTO"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File was successfully downloaded"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/getFileList": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "GetFileList user",
+                "parameters": [
+                    {
+                        "description": "Login of an owner of files",
+                        "name": "GetFileListDTO",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GetFileListDTO"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.GetFileListSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.Error"
                         }
                     }
                 }
@@ -164,7 +303,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Done"
+                        "description": "New profile was successfully registered"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -196,11 +335,66 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.UnregisterDTO"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Done"
+                        "description": "Profile was successfully unregistered"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/uploadFile": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "UploadFile user",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Login of a user",
+                        "name": "login",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File was successfully uploaded"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -224,6 +418,51 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "roles": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DeleteFileDTO": {
+            "type": "object",
+            "required": [
+                "file-name",
+                "login"
+            ],
+            "properties": {
+                "file-name": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DownloadFileDTO": {
+            "type": "object",
+            "required": [
+                "file-name",
+                "login",
+                "path"
+            ],
+            "properties": {
+                "file-name": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GetFileListDTO": {
+            "type": "object",
+            "required": [
+                "login"
+            ],
+            "properties": {
+                "login": {
                     "type": "string"
                 }
             }
@@ -313,6 +552,17 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "type": "string"
+                }
+            }
+        },
+        "responses.GetFileListSuccess": {
+            "type": "object",
+            "properties": {
+                "files list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

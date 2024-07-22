@@ -1,5 +1,5 @@
 FROM golang:1.21.3-alpine3.18 as build
-LABEL authors="Vorontsov Ilya"
+LABEL authors="IAV"
 WORKDIR /Auth
 COPY go.mod go.sum ./
 RUN go mod download
